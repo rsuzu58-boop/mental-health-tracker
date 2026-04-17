@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -310,6 +311,28 @@ select.field-input { cursor: pointer; }
   font-weight: 700;
   background: var(--card-hover);
   min-height: 44px;
+}
+
+/* Section dividers inside card */
+.card-section {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  margin-bottom: 2px;
+}
+.card-section-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+}
+.card-section-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
 }
 
 /* ================================================================
@@ -683,7 +706,7 @@ select.field-input { cursor: pointer; }
               <th>😰 不安感<br>(1〜5)</th><th>🌙 入眠時刻</th><th>☀️ 起床時刻</th>
               <th>😴 睡眠時間</th><th>🏋️ 運動<br>(分)</th><th>🌞 日光<br>(分)</th>
               <th>💧 飲水<br>(L)</th><th>💬 会話<br>(分)</th><th>🍽️ 三色<br>(0〜3)</th>
-              <th>🏆 スコア<br>(/100)</th><th>📝 メモ</th>
+              <th>⚖️ 体重<br>(kg)</th><th>🏆 スコア<br>(/100)</th><th>📝 メモ</th>
             </tr>
           </thead>
           <tbody id="record-body"></tbody>
@@ -722,6 +745,13 @@ select.field-input { cursor: pointer; }
       <div class="chart-container"><canvas id="chart-sleep"></canvas></div>
       <div class="chart-legend">
         <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#9f7aea"></div>睡眠時間</div>
+      </div>
+    </div>
+    <div class="chart-section">
+      <h3>⚖️ 体重の推移</h3>
+      <div class="chart-container"><canvas id="chart-weight"></canvas></div>
+      <div class="chart-legend">
+        <div class="chart-legend-item"><div class="chart-legend-dot" style="background:#f6ad55"></div>体重(kg)</div>
       </div>
     </div>
   </div>
@@ -1004,27 +1034,21 @@ function buildCardView() {
     const grid = document.createElement('div');
     grid.className = 'field-grid';
 
-    const fields = [
-      { label:'😊 気分 (1〜5)', field:'mood', type:'select', min:1, max:5, prefix:'sel-mood' },
-      { label:'💪 体調 (1〜5)', field:'health', type:'select', min:1, max:5, prefix:'sel-health' },
-      { label:'😰 不安感 (1〜5)', field:'anxiety', type:'select', min:1, max:5, prefix:'sel-anx' },
-      { label:'🍽️ 三色食品 (0〜3)', field:'meals', type:'select', min:0, max:3, prefix:'sel-meal' },
-      { label:'🌙 入眠時刻', field:'bedtime', type:'time' },
-      { label:'☀️ 起床時刻', field:'wakeup', type:'time' },
-      { label:'🏋️ 運動 (分)', field:'exercise', type:'number', min:0, max:300 },
-      { label:'🌞 日光 (分)', field:'sunlight', type:'number', min:0, max:300 },
-      { label:'💧 飲水 (L)', field:'water', type:'number', min:0, max:10, step:0.1 },
-      { label:'💬 会話 (分)', field:'conversation', type:'number', min:0, max:600 },
-    ];
+    // Helper: add section divider
+    function addSection(label) {
+      const sec = document.createElement('div');
+      sec.className = 'card-section';
+      sec.innerHTML = `<span class="card-section-label">${label}</span><span class="card-section-line"></span>`;
+      grid.appendChild(sec);
+    }
 
-    fields.forEach(f => {
+    // Helper: add field
+    function addField(f) {
       const group = document.createElement('div');
-      group.className = 'field-group';
-
+      group.className = 'field-group' + (f.full ? ' full' : '');
       const lbl = document.createElement('label');
       lbl.className = 'field-label';
       lbl.textContent = f.label;
-
       let inp;
       if (f.type==='select') {
         inp = document.createElement('select');
@@ -1047,34 +1071,63 @@ function buildCardView() {
         inp.type = 'number'; inp.className = 'field-input';
         inp.min = f.min; inp.max = f.max; inp.step = f.step||1;
         inp.value = rec[f.field] ?? '';
+        inp.placeholder = f.placeholder || '';
         inp.addEventListener('change', () => { saveField(key, f.field, inp.value ? +inp.value : ''); updateCardPreview(key); });
       }
       inp.setAttribute('aria-label', f.label);
-
+      lbl.appendChild(inp);
       group.appendChild(lbl);
-      group.appendChild(inp);
       grid.appendChild(group);
-    });
+    }
+
+    // 🌅 朝の記録
+    addSection('🌅 朝の記録');
+    addField({ label:'☀️ 起床時刻', field:'wakeup', type:'time' });
+    addField({ label:'⚖️ 体重 (kg)', field:'weight', type:'number', min:20, max:200, step:0.1, placeholder:'kg' });
+
+    // ☀️ 日中の記録
+    addSection('☀️ 日中の記録');
+    addField({ label:'🏋️ 運動 (分)', field:'exercise', type:'number', min:0, max:300 });
+    addField({ label:'🌞 日光 (分)', field:'sunlight', type:'number', min:0, max:300 });
+    addField({ label:'💧 飲水 (L)', field:'water', type:'number', min:0, max:10, step:0.1 });
+    addField({ label:'💬 会話 (分)', field:'conversation', type:'number', min:0, max:600 });
+    addField({ label:'🍽️ 三色食品 (0〜3)', field:'meals', type:'select', min:0, max:3, prefix:'sel-meal' });
+
+    // 🌙 夜の記録（就寝前）
+    addSection('🌙 夜の記録（就寝前）');
+    addField({ label:'😊 気分 (1〜5)', field:'mood', type:'select', min:1, max:5, prefix:'sel-mood' });
+    addField({ label:'💪 体調 (1〜5)', field:'health', type:'select', min:1, max:5, prefix:'sel-health' });
+    addField({ label:'😰 不安感 (1〜5)', field:'anxiety', type:'select', min:1, max:5, prefix:'sel-anx' });
+    addField({ label:'🌙 入眠時刻', field:'bedtime', type:'time' });
+
+    // 自動計算
+    addSection('🤖 自動計算');
 
     // Sleep (auto)
     const sleepGroup = document.createElement('div');
     sleepGroup.className = 'field-group';
-    sleepGroup.innerHTML = `<span class="field-label">😴 睡眠時間（自動）</span>`;
+    const sleepLbl = document.createElement('span');
+    sleepLbl.className = 'field-label';
+    sleepLbl.textContent = '😴 睡眠時間';
     const sleepDisp = document.createElement('div');
     sleepDisp.className = `auto-field ${sleepH!=null?sleepClass(sleepH):''}`;
     sleepDisp.id = `csleep-${key}`;
     sleepDisp.textContent = sleepH!=null ? `${sleepH.toFixed(1)}h` : '-';
+    sleepGroup.appendChild(sleepLbl);
     sleepGroup.appendChild(sleepDisp);
     grid.appendChild(sleepGroup);
 
     // Score (auto)
     const scoreGroup = document.createElement('div');
     scoreGroup.className = 'field-group';
-    scoreGroup.innerHTML = `<span class="field-label">🏆 健康スコア（自動）</span>`;
+    const scoreLbl = document.createElement('span');
+    scoreLbl.className = 'field-label';
+    scoreLbl.textContent = '🏆 健康スコア';
     const scoreDisp = document.createElement('div');
     scoreDisp.className = `auto-field ${score!=null?scoreClass(score):''}`;
     scoreDisp.id = `cscore-${key}`;
     scoreDisp.textContent = score!=null ? `${score.toFixed(1)} / 100` : '-';
+    scoreGroup.appendChild(scoreLbl);
     scoreGroup.appendChild(scoreDisp);
     grid.appendChild(scoreGroup);
 
@@ -1090,8 +1143,8 @@ function buildCardView() {
     memoInp.placeholder = '今日の一言...';
     memoInp.setAttribute('aria-label', 'メモ');
     memoInp.addEventListener('change', () => saveField(key, 'memo', memoInp.value));
+    memoLbl.appendChild(memoInp);
     memoGroup.appendChild(memoLbl);
-    memoGroup.appendChild(memoInp);
     grid.appendChild(memoGroup);
 
     body.appendChild(grid);
@@ -1185,6 +1238,7 @@ function buildTableView() {
     tr.appendChild(mkNum(key,'water',rec.water,0,10,0.1));
     tr.appendChild(mkNum(key,'conversation',rec.conversation,0,600));
     tr.appendChild(mkSel(key,'meals',rec.meals,0,3,'sel-meal'));
+    tr.appendChild(mkNum(key,'weight',rec.weight,20,200,0.1));
 
     const score = calcScore({...rec, sleepH});
     const tdScore = document.createElement('td');
@@ -1232,7 +1286,7 @@ function refreshRow(key) {
   const st=row.children[6]; st.innerHTML='';
   if (sleepH!=null) { const s=document.createElement('span'); s.className=`sleep-display ${sleepClass(sleepH)}`; s.textContent=`${sleepH.toFixed(1)}h`; st.appendChild(s); }
   const score=calcScore({...rec,sleepH});
-  const sc=row.children[12]; sc.innerHTML='';
+  const sc=row.children[13]; sc.innerHTML='';
   if (score!=null) { const s=document.createElement('span'); s.className=`score-display ${scoreClass(score)}`; s.textContent=score.toFixed(1); sc.appendChild(s); }
 }
 
@@ -1258,6 +1312,7 @@ function buildSummary() {
     {icon:'🏆',label:'平均健康スコア',
       value:(()=>{ const s=last7.map(r=>calcScore(r)).filter(v=>v!=null); return s.length?s.reduce((a,b)=>a+b,0)/s.length:null; })(),
       fmt:v=>`${v.toFixed(1)}/100`,hint:'80以上を目指そう'},
+    {icon:'⚖️',label:'平均体重',value:avg('weight'),fmt:v=>`${v.toFixed(1)}kg`,hint:'変化を記録しよう'},
   ];
   const grid=document.getElementById('summary-grid'); grid.innerHTML='';
   items.forEach(item=>{
@@ -1272,7 +1327,7 @@ function buildSummary() {
    ================================================================ */
 function buildCharts() {
   const data=loadData(); const today=new Date(); const n=14;
-  const labels=[],scores=[],moods=[],healths=[],anxieties=[],sleeps=[];
+  const labels=[],scores=[],moods=[],healths=[],anxieties=[],sleeps=[],weights=[];
   for (let i=n-1;i>=0;i--) {
     const d=new Date(today); d.setDate(today.getDate()-i);
     labels.push(`${d.getMonth()+1}/${d.getDate()}`);
@@ -1280,13 +1335,22 @@ function buildCharts() {
     scores.push(calcScore({...r,sleepH:sh}));
     moods.push(r.mood??null); healths.push(r.health??null);
     anxieties.push(r.anxiety??null); sleeps.push(sh);
+    weights.push(r.weight??null);
   }
   drawChart('chart-score',labels,[{data:scores,color:'#4361ee'}],100);
   drawChart('chart-mood',labels,[{data:moods,color:'#48bb78'},{data:healths,color:'#4299e1'},{data:anxieties,color:'#ed8936'}],5);
   drawChart('chart-sleep',labels,[{data:sleeps,color:'#9f7aea'}],12);
+  // 体重グラフ：データがある場合のみmin/maxを動的に計算
+  const validW=weights.filter(v=>v!=null);
+  if (validW.length>0) {
+    const minW=Math.floor(Math.min(...validW)-2), maxW=Math.ceil(Math.max(...validW)+2);
+    drawChart('chart-weight',labels,[{data:weights,color:'#f6ad55'}],maxW,minW);
+  } else {
+    drawChart('chart-weight',labels,[{data:weights,color:'#f6ad55'}],100);
+  }
 }
 
-function drawChart(id,labels,datasets,maxY) {
+function drawChart(id,labels,datasets,maxY,minY=0) {
   const canvas=document.getElementById(id); if(!canvas)return;
   const ctx=canvas.getContext('2d');
   const dpr=window.devicePixelRatio||1;
@@ -1301,13 +1365,14 @@ function drawChart(id,labels,datasets,maxY) {
   const gridC=isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)';
   const textC=isDark?'#a0aec0':'#718096';
 
+  const range = maxY - minY;
   ctx.clearRect(0,0,W,H);
   ctx.strokeStyle=gridC; ctx.lineWidth=1;
   for (let i=0;i<=4;i++) {
     const y=pad.top+(cH/4)*i;
     ctx.beginPath(); ctx.moveTo(pad.left,y); ctx.lineTo(W-pad.right,y); ctx.stroke();
     ctx.fillStyle=textC; ctx.font='10px sans-serif'; ctx.textAlign='right'; ctx.textBaseline='middle';
-    ctx.fillText(Math.round(maxY-(maxY/4)*i), pad.left-5, y);
+    ctx.fillText(Math.round(maxY-(range/4)*i), pad.left-5, y);
   }
   ctx.textAlign='center'; ctx.textBaseline='top';
   const step=Math.max(1,Math.floor(n/6));
@@ -1322,7 +1387,7 @@ function drawChart(id,labels,datasets,maxY) {
     for (let i=0;i<n;i++) {
       if (ds.data[i]==null) { started=false; continue; }
       const x=pad.left+(cW/(n-1))*i;
-      const y=pad.top+cH-(ds.data[i]/maxY)*cH;
+      const y=pad.top+cH-((ds.data[i]-minY)/range)*cH;
       pts.push({x,y});
       if (!started) { ctx.moveTo(x,y); started=true; } else ctx.lineTo(x,y);
     }
@@ -1564,10 +1629,10 @@ function goToToday() {
 function exportCSV() {
   const data=loadData(); const keys=Object.keys(data).sort();
   if (!keys.length) { showToast('データがありません'); return; }
-  const h='日付,気分,体調,不安感,入眠時刻,起床時刻,睡眠時間,運動(分),日光(分),飲水(L),会話(分),三色食品,健康スコア,メモ\n';
+  const h='日付,気分,体調,不安感,入眠時刻,起床時刻,睡眠時間,運動(分),日光(分),飲水(L),会話(分),三色食品,体重(kg),健康スコア,メモ\n';
   const rows=keys.map(k=>{
     const r=data[k]; const sh=calcSleep(r.bedtime,r.wakeup); const sc=calcScore({...r,sleepH:sh});
-    return [k,r.mood??'',r.health??'',r.anxiety??'',r.bedtime??'',r.wakeup??'',sh??'',r.exercise??'',r.sunlight??'',r.water??'',r.conversation??'',r.meals??'',sc??'',`"${(r.memo||'').replace(/"/g,'""')}"`].join(',');
+    return [k,r.mood??'',r.health??'',r.anxiety??'',r.bedtime??'',r.wakeup??'',sh??'',r.exercise??'',r.sunlight??'',r.water??'',r.conversation??'',r.meals??'',r.weight??'',sc??'',`"${(r.memo||'').replace(/"/g,'""')}"`].join(',');
   }).join('\n');
   dl(`mental_health_${todayKey()}.csv`,'\uFEFF'+h+rows,'text/csv;charset=utf-8');
   showToast('CSVをダウンロードしました');
