@@ -705,7 +705,7 @@ select.field-input { cursor: pointer; }
               <th>📅 日付</th><th>😊 気分<br>(1〜5)</th><th>💪 体調<br>(1〜5)</th>
               <th>😰 不安感<br>(1〜5)</th><th>🌙 入眠時刻</th><th>☀️ 起床時刻</th>
               <th>😴 睡眠時間</th><th>🏋️ 運動<br>(分)</th><th>🌞 日光<br>(分)</th>
-              <th>💧 飲水<br>(L)</th><th>💬 会話<br>(分)</th><th>🍽️ 三色<br>(0〜3)</th>
+              <th>💧 飲水<br>(L)</th><th>💬 会話<br>(分)</th><th>🥗 食事<br>(1〜5)</th>
               <th>⚖️ 体重<br>(kg)</th><th>🏆 スコア<br>(/100)</th><th>📝 メモ</th>
             </tr>
           </thead>
@@ -924,7 +924,7 @@ function calcScore(r) {
   if (sunlight) { const v=+sunlight; s += v>=30?5:v>=15?3:v>=1?1:0; }
   if (water) { const v=+water; s += v>=2?3:v>=1.5?2:v>=1?1:0; }
   if (conversation) { const v=+conversation; s += v>=60?3:v>=30?2:v>=1?1:0; }
-  if (meals!=null&&meals!=='') s += (+meals)*3;
+  if (meals!=null&&meals!=='') s += ((+meals-1)/4)*9;
   return Math.round(s*10)/10;
 }
 
@@ -1091,7 +1091,7 @@ function buildCardView() {
     addField({ label:'🌞 日光 (分)', field:'sunlight', type:'number', min:0, max:300 });
     addField({ label:'💧 飲水 (L)', field:'water', type:'number', min:0, max:10, step:0.1 });
     addField({ label:'💬 会話 (分)', field:'conversation', type:'number', min:0, max:600 });
-    addField({ label:'🍽️ 三色食品 (0〜3)', field:'meals', type:'select', min:0, max:3, prefix:'sel-meal' });
+    addField({ label:'🥗 食事バランス (1〜5)', field:'meals', type:'select', min:1, max:5, prefix:'sel-mood' });
 
     // 🌙 夜の記録（就寝前）
     addSection('🌙 夜の記録（就寝前）');
@@ -1237,7 +1237,7 @@ function buildTableView() {
     tr.appendChild(mkNum(key,'sunlight',rec.sunlight,0,300));
     tr.appendChild(mkNum(key,'water',rec.water,0,10,0.1));
     tr.appendChild(mkNum(key,'conversation',rec.conversation,0,600));
-    tr.appendChild(mkSel(key,'meals',rec.meals,0,3,'sel-meal'));
+    tr.appendChild(mkSel(key,'meals',rec.meals,1,5,'sel-mood'));
     tr.appendChild(mkNum(key,'weight',rec.weight,20,200,0.1));
 
     const score = calcScore({...rec, sleepH});
@@ -1308,7 +1308,7 @@ function buildSummary() {
     {icon:'🌞',label:'平均日光時間',value:avg('sunlight'),fmt:v=>`${Math.round(v)}分`,hint:'15分以上/日'},
     {icon:'💧',label:'平均飲水量',value:avg('water'),fmt:v=>`${v.toFixed(1)}L`,hint:'1.5〜2L/日'},
     {icon:'💬',label:'平均会話時間',value:avg('conversation'),fmt:v=>`${Math.round(v)}分`,hint:'30分以上/日'},
-    {icon:'🍽️',label:'平均三色食品',value:avg('meals'),fmt:v=>v.toFixed(1),hint:'3が理想'},
+    {icon:'🥗',label:'食事バランス平均',value:avg('meals'),fmt:v=>v.toFixed(1),hint:'4以上が理想'},
     {icon:'🏆',label:'平均健康スコア',
       value:(()=>{ const s=last7.map(r=>calcScore(r)).filter(v=>v!=null); return s.length?s.reduce((a,b)=>a+b,0)/s.length:null; })(),
       fmt:v=>`${v.toFixed(1)}/100`,hint:'80以上を目指そう'},
@@ -1412,7 +1412,7 @@ function buildGuide() {
     {icon:'🌞',title:'日光時間',score:'最大5点',detail:'30分以上=5 / 15分=3 / 1分=1'},
     {icon:'💧',title:'飲水量',score:'最大3点',detail:'2L以上=3 / 1.5L=2 / 1L=1'},
     {icon:'💬',title:'会話時間',score:'最大3点',detail:'60分以上=3 / 30分=2 / 1分=1'},
-    {icon:'🍽️',title:'三色食品',score:'最大9点',detail:'達成数 × 3点'},
+    {icon:'🥗',title:'食事バランス',score:'最大9点',detail:'(スコア-1)/4 × 9点\n1=悪い〜5=とても良い'},
     {icon:'🏆',title:'合計',score:'100点',detail:'80以上=🟢 / 60〜79=🔵 / 40〜59=🟡 / 40未満=🔴'},
   ];
   const c=document.getElementById('guide-cards'); c.innerHTML='';
@@ -1629,7 +1629,7 @@ function goToToday() {
 function exportCSV() {
   const data=loadData(); const keys=Object.keys(data).sort();
   if (!keys.length) { showToast('データがありません'); return; }
-  const h='日付,気分,体調,不安感,入眠時刻,起床時刻,睡眠時間,運動(分),日光(分),飲水(L),会話(分),三色食品,体重(kg),健康スコア,メモ\n';
+  const h='日付,気分,体調,不安感,入眠時刻,起床時刻,睡眠時間,運動(分),日光(分),飲水(L),会話(分),食事バランス,体重(kg),健康スコア,メモ\n';
   const rows=keys.map(k=>{
     const r=data[k]; const sh=calcSleep(r.bedtime,r.wakeup); const sc=calcScore({...r,sleepH:sh});
     return [k,r.mood??'',r.health??'',r.anxiety??'',r.bedtime??'',r.wakeup??'',sh??'',r.exercise??'',r.sunlight??'',r.water??'',r.conversation??'',r.meals??'',r.weight??'',sc??'',`"${(r.memo||'').replace(/"/g,'""')}"`].join(',');
