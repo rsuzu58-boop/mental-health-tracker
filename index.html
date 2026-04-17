@@ -1081,23 +1081,20 @@ function buildCardView() {
     }
 
     // 🌅 朝の記録
-    addSection('🌅 朝の記録');
+    addSection('🌅 朝の記録（起きたら）');
     addField({ label:'☀️ 起床時刻', field:'wakeup', type:'time' });
     addField({ label:'⚖️ 体重 (kg)', field:'weight', type:'number', min:20, max:200, step:0.1, placeholder:'kg' });
 
-    // ☀️ 日中の記録
-    addSection('☀️ 日中の記録');
+    // 🌙 就寝前の記録
+    addSection('🌙 就寝前の記録');
+    addField({ label:'😊 気分 (1〜5)', field:'mood', type:'select', min:1, max:5, prefix:'sel-mood' });
+    addField({ label:'💪 体調 (1〜5)', field:'health', type:'select', min:1, max:5, prefix:'sel-health' });
+    addField({ label:'😰 不安感 (1〜5)', field:'anxiety', type:'select', min:1, max:5, prefix:'sel-anx' });
+    addField({ label:'🥗 食事バランス (1〜5)', field:'meals', type:'select', min:1, max:5, prefix:'sel-mood' });
     addField({ label:'🏋️ 運動 (分)', field:'exercise', type:'number', min:0, max:300 });
     addField({ label:'🌞 日光 (分)', field:'sunlight', type:'number', min:0, max:300 });
     addField({ label:'💧 飲水 (L)', field:'water', type:'number', min:0, max:10, step:0.1 });
     addField({ label:'💬 会話 (分)', field:'conversation', type:'number', min:0, max:600 });
-    addField({ label:'🥗 食事バランス (1〜5)', field:'meals', type:'select', min:1, max:5, prefix:'sel-mood' });
-
-    // 🌙 夜の記録（就寝前）
-    addSection('🌙 夜の記録（就寝前）');
-    addField({ label:'😊 気分 (1〜5)', field:'mood', type:'select', min:1, max:5, prefix:'sel-mood' });
-    addField({ label:'💪 体調 (1〜5)', field:'health', type:'select', min:1, max:5, prefix:'sel-health' });
-    addField({ label:'😰 不安感 (1〜5)', field:'anxiety', type:'select', min:1, max:5, prefix:'sel-anx' });
     addField({ label:'🌙 入眠時刻', field:'bedtime', type:'time' });
 
     // 自動計算
